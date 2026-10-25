@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AED Expenses">
+<title>AED Expense Tracker</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f3f5f9;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);background:#f3f5f9}
+header{background:#0f172a;color:white;padding:24px 18px 28px;border-radius:0 0 24px 24px}
+header .eyebrow{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#cbd5e1}
+header h1{font-size:25px;margin:8px 0 20px}
+.summary{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat{background:#ffffff16;border:1px solid #ffffff22;border-radius:16px;padding:14px}
+.stat small{display:block;color:#cbd5e1;font-size:12px;margin-bottom:7px}
+.stat strong{font-size:21px;overflow-wrap:anywhere}
+main{max-width:650px;margin:auto;padding:16px}
+.card{background:white;border:1px solid #e5e9f2;border-radius:18px;padding:17px;margin-bottom:15px;box-shadow:0 4px 16px #15213b08}
+h2{font-size:17px;margin:0 0 14px}
+label{display:block;font-size:12px;font-weight:650;color:#596579;margin:12px 0 6px}
+input,select,button{font:inherit}
+input,select{width:100%;padding:12px;border:1px solid #d9dfeb;border-radius:11px;background:white;color:#172033;min-height:45px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{border:0;border-radius:11px;padding:12px 14px;font-weight:700;cursor:pointer}
+.primary{width:100%;margin-top:15px;background:#2563eb;color:white;min-height:48px}
+.secondary{background:#eaf0ff;color:#1d4ed8}
+.danger{background:#fff0f0;color:#b91c1c;padding:8px 10px;font-size:12px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.toolbar h2{margin:0}
+.entry{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #edf0f5}
+.entry:last-child{border-bottom:0;padding-bottom:0}
+.entry-icon{width:42px;height:42px;border-radius:13px;background:#eef2ff;display:grid;place-items:center;font-size:19px;flex-shrink:0}
+.entry-info{flex:1;min-width:0}
+.entry-info strong{display:block;font-size:14px;overflow-wrap:anywhere}
+.entry-info small{display:block;color:#7b8495;font-size:12px;margin-top:4px}
+.entry-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:7px}
+.entry-right b{font-size:14px;white-space:nowrap}
+.empty{text-align:center;padding:25px 8px;color:#7b8495;font-size:14px}
+.note{font-size:12px;color:#6b7280;line-height:1.5}
+.footer{text-align:center;color:#8a93a4;font-size:11px;padding:4px 0 20px}
+@media(min-width:560px){main{padding-top:22px}.grid{gap:14px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Personal finance · UAE</div>
+  <h1>AED Expense Tracker</h1>
+  <div class="summary">
+    <div class="stat"><small>This month</small><strong id="monthTotal">AED 0.00</strong></div>
+    <div class="stat"><small>All recorded</small><strong id="allTotal">AED 0.00</strong></div>
+  </div>
+</header>
+<main>
+  <section class="card">
+    <h2>Add an expense</h2>
+    <form id="expenseForm">
+      <label for="amount">Amount (AED)</label>
+      <input id="amount" type="number" min="0.01" step="0.01" placeholder="e.g. 18.50" required inputmode="decimal">
+      <label for="description">Description</label>
+      <input id="description" maxlength="90" placeholder="e.g. Lunch" required>
+      <div class="grid">
+        <div><label for="category">Category</label>
+          <select id="category">
+            <option>Food</option><option>Transport</option><option>Groceries</option><option>Bills</option><option>Shopping</option><option>Health</option><option>Family</option><option>Entertainment</option><option>Other</option>
+          </select>
+        </div>
+        <div><label for="payment">Payment method</label>
+          <select id="payment"><option>Card</option><option>Cash</option><option>Bank transfer</option><option>Apple Pay</option><option>Other</option></select>
+        </div>
+      </div>
+      <label for="date">Date</label>
+      <input id="date" type="date" required>
+      <button class="primary" type="submit">＋ Save expense</button>
+    </form>
+  </section>
+  <section class="card">
+    <div class="toolbar">
+      <h2>Expense history</h2>
+      <button class="secondary" id="exportBtn" type="button">Export CSV</button>
+    </div>
+    <label for="filterMonth">Filter by month</label>
+    <input id="filterMonth" type="month">
+    <div id="expenseList"></div>
+  </section>
+  <section class="card">
+    <h2>Backup & privacy</h2>
+    <p class="note">Your entries are saved in this browser on this device. They do not automatically sync to your other devices. Export a CSV backup regularly and keep it somewhere safe. Clearing Safari website data may erase these entries.</p>
+    <button class="secondary" id="backupBtn" type="button">Download backup (JSON)</button>
+  </section>
+  <div class="footer">AED Expense Tracker · Personal use · No bank connection</div>
+</main>
+<script>
+(() => {
+  const STORAGE_KEY = "aedExpenseTracker_v1";
+  const $ = id => document.getElementById(id);
+  const today = new Date();
+  const localDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  const monthNow = localDate.slice(0,7);
+  $("date").value = localDate;
+  $("filterMonth").value = monthNow;
+  const money = n => new Intl.NumberFormat("en-AE",{style:"currency",currency:"AED"}).format(n);
+  const icons = {Food:"🍽️",Transport:"🚕",Groceries:"🛒",Bills:"🧾",Shopping:"🛍️",Health:"💊",Family:"👨‍👩‍👧",Entertainment:"🎬",Other:"📌"};
+  let expenses = [];
+  try { expenses = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); if (!Array.isArray(expenses)) expenses=[]; }
+  catch { expenses=[]; }
+  function save(){ localStorage.setItem(STORAGE_KEY,JSON.stringify(expenses)); render(); }
+  function render(){
+    const selectedMonth = $("filterMonth").value;
+    const monthSum = expenses.filter(e=>e.date && e.date.startsWith(monthNow)).reduce((s,e)=>s+Number(e.amount),0);
+    const allSum = expenses.reduce((s,e)=>s+Number(e.amount),0);
+    $("monthTotal").textContent = money(monthSum);
+    $("allTotal").textContent = money(allSum);
+    const shown = expenses.filter(e=>!selectedMonth || e.date.startsWith(selectedMonth)).sort((a,b)=>b.date.localeCompare(a.date) || b.createdAt-a.createdAt);
+    const list=$("expenseList");
+    list.replaceChildren();
+    if(!shown.length){const p=document.createElement("div");p.className="empty";p.textContent="No expenses for this month yet. Add your first expense above.";list.appendChild(p);return;}
+    shown.forEach(e=>{
+      const row=document.createElement("div");row.className="entry";
+      const ico=document.createElement("div");ico.className="entry-icon";ico.textContent=icons[e.category]||"📌";
+      const info=document.createElement("div");info.className="entry-info";
+      const title=document.createElement("strong");title.textContent=e.description;
+      const meta=document.createElement("small");meta.textContent=`${e.category} · ${e.payment} · ${e.date}`;
+      info.append(title,meta);
+      const right=document.createElement("div");right.className="entry-right";
+      const amount=document.createElement("b");amount.textContent=money(Number(e.amount));
+      const del=document.createElement("button");del.className="danger";del.type="button";del.textContent="Delete";
+      del.addEventListener("click",()=>{if(confirm("Delete this expense?")){expenses=expenses.filter(x=>x.id!==e.id);save();}});
+      right.append(amount,del);row.append(ico,info,right);list.appendChild(row);
+    });
+  }
+  $("expenseForm").addEventListener("submit",event=>{
+    event.preventDefault();
+    const amount=Number($("amount").value);
+    const description=$("description").value.trim();
+    const date=$("date").value;
+    if(!Number.isFinite(amount)||amount<=0||!description||!date){alert("Please enter a valid amount, description and date.");return;}
+    expenses.push({id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random()),amount:Math.round(amount*100)/100,description,category:$("category").value,payment:$("payment").value,date,createdAt:Date.now()});
+    save();
+    $("amount").value="";$("description").value="";$("date").value=localDate;
+    $("amount").focus();
+  });
+  $("filterMonth").addEventListener("change",render);
+  function download(filename,content,type){
+    const blob=new Blob([content],{type});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  $("exportBtn").addEventListener("click",()=>{
+    const rows=[["Date","Description","Category","Payment Method","Amount AED"],...expenses.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(e=>[e.date,e.description,e.category,e.payment,Number(e.amount).toFixed(2)])];
+    const csv=rows.map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+    download("aed-expenses.csv","\uFEFF"+csv,"text/csv;charset=utf-8;");
+  });
+  $("backupBtn").addEventListener("click",()=>download("aed-expenses-backup.json",JSON.stringify({exportedAt:new Date().toISOString(),expenses},null,2),"application/json"));
+  render();
+})();
+</script>
+</body>
+</html>
